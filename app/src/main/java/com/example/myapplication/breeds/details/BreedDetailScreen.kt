@@ -46,6 +46,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -65,27 +66,20 @@ fun NavGraphBuilder.breedDetails(
     route: String,
     arguments: List<NamedNavArgument>,
     onBack: () -> Unit,
+    onItemClick: (String) -> Unit,
 ) = composable(
     route = route
 ) {navBackStackEntry ->
-    val breedId = navBackStackEntry.arguments?.getString("id")
-        ?: throw IllegalStateException("breedId required")
 
-    val breedsDetailsViewModel = viewModel<BreedsDetailViewModel>(
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return BreedsDetailViewModel(breedId = breedId) as T
-            }
-        }
-    )
+    val breedsDetailsViewModel : BreedsDetailViewModel = hiltViewModel<BreedsDetailViewModel>(navBackStackEntry)
 
 
     val state = breedsDetailsViewModel.state.collectAsState()
 
     BreedDetailScreen(
         state = state.value,
-        onBack = onBack
+        onBack = onBack,
+        onItemClick = onItemClick
     )
 
 }
@@ -94,7 +88,8 @@ fun NavGraphBuilder.breedDetails(
 @Composable
 fun BreedDetailScreen(
     state: BreedsDetailState,
-    onBack : () -> Unit
+    onBack : () -> Unit,
+    onItemClick: (String) -> Unit
 ) {
 
     Scaffold(
@@ -127,7 +122,9 @@ fun BreedDetailScreen(
             val scrollState = rememberScrollState()
             if (state.error != null) {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     val errorMessage = when (state.error) {
@@ -189,6 +186,15 @@ fun BreedDetailScreen(
                             contentDescription = null,
                             contentScale = ContentScale.Crop
                         )
+
+                        Button(
+                            onClick = { state.breedsDetail?.let { it1 -> onItemClick(it1.id) } },
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text("Open Gallery")
+                        }
+
+
                         Text(
                             modifier =  Modifier.padding(all = 16.dp),
                             text = "Breed: ${state.breedsDetail?.name}"

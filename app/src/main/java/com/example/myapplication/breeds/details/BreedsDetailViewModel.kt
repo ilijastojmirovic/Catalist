@@ -1,5 +1,6 @@
 package com.example.myapplication.breeds.details
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.breeds.api.model.BreedApiModel
@@ -8,7 +9,12 @@ import com.example.myapplication.breeds.details.BreedsDetailContract.BreedsDetai
 import com.example.myapplication.breeds.details.BreedsDetailContract.BreedsDetailState
 import com.example.myapplication.breeds.details.model.BreedsDetailUiModel
 import com.example.myapplication.breeds.list.BreedListContract
+import com.example.myapplication.breeds.mappers.asBreedUiModel
+import com.example.myapplication.breeds.mappers.asBreedsDetailUiModel
+import com.example.myapplication.breeds.photos.repository.PhotoRepository
 import com.example.myapplication.breeds.repository.BreedsRepository
+import com.example.myapplication.navigation.breedId
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,11 +22,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class BreedsDetailViewModel(
-    private val breedId : String,
-    private val repository: BreedsRepository = BreedsRepository
+@HiltViewModel
+class BreedsDetailViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val repository: BreedsRepository,
+    private val photoRepository: PhotoRepository
 ) : ViewModel() {
+
+    private val breedId = savedStateHandle.breedId;
+
     private val _state = MutableStateFlow(BreedsDetailState())
     val state = _state.asStateFlow()
     private fun setState(reducer: BreedsDetailState.() -> BreedsDetailState) = _state.update(reducer)
@@ -38,13 +50,41 @@ class BreedsDetailViewModel(
             setState { copy(loading = true) }
             try {
                 val breed = withContext(Dispatchers.IO) {
-                     repository.fetchBreedById(breedId).asBreedsDetailUiModel()
+                     repository.getBreedById(breedId).asBreedsDetailUiModel()
                 }
-                val breedImage = withContext(Dispatchers.IO) {
-                    breed.reference_image_id?.let { repository.fetchBreedImageById(it) }
+
+                val getBreedsPhotos = withContext(Dispatchers.IO){
+                    photoRepository.getAllPhotosForBreed(breedId)
                 }
+
+                if(getBreedsPhotos.isEmpty()){
+                    val breedPhotos = withContext(Dispatchers.IO){
+                        photoRepository.fetchPhotosForBreed(breedId)
+                    }
+                }
+
+                val imageId = breed.reference_image_id;
+
+                val photo = withContext(Dispatchers.IO){
+                    imageId?.let { photoRepository.getOnePhoto(it) }
+                }
+
+                if(photo == null){
+                    val breedPhoto = withContext(Dispatchers.IO){
+                        breed.reference_image_id?.let { photoRepository.fetchPhoto(it, breedId ) }
+                    }
+                    val finalBreedPhoto = withContext(Dispatchers.IO){
+                        imageId?.let { photoRepository.getOnePhoto(it) }
+                    }
+                    if (finalBreedPhoto != null) {
+                        setState { copy(breedImageURL = finalBreedPhoto.url) }
+                    }
+                } else{
+                    setState { copy(breedImageURL = photo.url) }
+                }
+
+
                 setState { copy(breedsDetail = breed) }
-                setState { copy(breedImageURL = breedImage) }
 
 
             } catch (error: Exception) {

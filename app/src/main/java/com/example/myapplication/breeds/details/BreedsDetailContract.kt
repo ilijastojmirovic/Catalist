@@ -8,7 +8,7 @@ interface BreedsDetailContract {
         val loading: Boolean = false,
         val breedsDetail: BreedsDetailUiModel? = null,
         val breedImageURL: String? = null,
-        val error: DetailError? = null
+        val error: DetailError? = null,
     )
 
     sealed class BreedsDetailEvent {

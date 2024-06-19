@@ -7,7 +7,9 @@ import com.example.myapplication.breeds.api.model.BreedApiModel
 import com.example.myapplication.breeds.list.BreedListContract.BreedsListEvent
 import com.example.myapplication.breeds.list.BreedListContract.BreedsListState
 import com.example.myapplication.breeds.list.model.BreedUiModel
+import com.example.myapplication.breeds.mappers.asBreedUiModel
 import com.example.myapplication.breeds.repository.BreedsRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,9 +18,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.lang.Exception
+import javax.inject.Inject
 
-class BreedsListViewModel(
-    private val repository: BreedsRepository = BreedsRepository
+@HiltViewModel
+class BreedsListViewModel @Inject constructor(
+    private val repository: BreedsRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(BreedsListState())
     val state = _state.asStateFlow()
@@ -36,11 +40,23 @@ class BreedsListViewModel(
         viewModelScope.launch {
             setState { copy(loading = true) }
             try{
-                val breeds = withContext(Dispatchers.IO){
-                    repository.fetchAllBreeds().map { it.asBreedUiModel() }
+                val dbBreeds = withContext(Dispatchers.IO){
+                    repository.getAllBreeds();
                 }
-                setState { copy(breeds = breeds) }
 
+                if (dbBreeds.isNotEmpty()){
+                    setState { copy(breeds = dbBreeds.map { it.asBreedUiModel() }) }
+                } else{
+                    val breeds = withContext(Dispatchers.IO){
+                        repository.fetchAllBreeds()
+                    }
+                    val finalBreeds =  withContext(Dispatchers.IO){
+                        repository.getAllBreeds();
+                    }
+
+                    setState { copy(breeds = finalBreeds.map { it.asBreedUiModel() }) }
+
+                }
             } catch (error: Exception){
                 // TODO handle error
                 Log.e("BreedsListViewModel", "Error fetching breeds", error)

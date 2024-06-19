@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
@@ -30,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Surface
 
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -47,6 +50,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
@@ -59,10 +63,11 @@ import com.example.myapplication.breeds.list.model.BreedUiModel
 fun NavGraphBuilder.breeds(
     route: String,
     onItemClick: (String) -> Unit,
+    onBack: () -> Unit,
 ) = composable(
     route = route
 ) {
-    val breedListViewModel = viewModel<BreedsListViewModel>()
+    val breedListViewModel : BreedsListViewModel  = hiltViewModel<BreedsListViewModel>()
 
     val state = breedListViewModel.state.collectAsState()
     BreedsListScreen(
@@ -71,6 +76,7 @@ fun NavGraphBuilder.breeds(
             breedListViewModel.setEvent(it)
         },
         onItemClick = onItemClick,
+        onBack = onBack
     )
 }
 
@@ -79,7 +85,8 @@ fun NavGraphBuilder.breeds(
 fun BreedsListScreen(
     state: BreedsListState,
     eventPublisher: (uiEvent: BreedsListEvent) -> Unit,
-    onItemClick: (String) -> Unit
+    onItemClick: (String) -> Unit,
+    onBack: () -> Unit
 ) {
 
     Scaffold(
@@ -93,8 +100,17 @@ fun BreedsListScreen(
                             style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp),
                             text = "BreedsList"
                         )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
                     }
                 )
+
                 Divider(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -139,7 +155,9 @@ fun BreedsListScreen(
                // }
                 if (state.error != null) {
                     Box(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         val errorMessage = when (state.error) {
@@ -171,13 +189,18 @@ fun BreedsListScreen(
     )
 }
 
+
+
+
 @Composable
 private fun LazyForScreen(
     breeds : List<BreedUiModel>,
     onItemClick: (String) -> Unit,
 ){
     LazyColumn(
-        modifier = Modifier.padding(horizontal = 8.dp).padding(top = 16.dp),
+        modifier = Modifier
+            .padding(horizontal = 8.dp)
+            .padding(top = 16.dp),
         ) {
         items(
             items = breeds,
@@ -188,13 +211,15 @@ private fun LazyForScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
                     .padding(bottom = 16.dp)
-                    .clickable {  onItemClick(breed.id) },
+                    .clickable { onItemClick(breed.id) },
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                 ){
                     Column(
-                        modifier = Modifier.padding(16.dp).weight(1f)
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .weight(1f)
                     ) {
                         Text(
                             text = breed.name,
@@ -217,7 +242,7 @@ private fun LazyForScreen(
                                 .padding(top = 8.dp)
                                 .wrapContentWidth()
                         ) {
-                            breed.temperament.forEach { temperament ->
+                            breed.temperament.filter { it.isNotEmpty() }.take(3).forEach { temperament ->
                                 AssistChip(
                                     modifier = Modifier.padding(end = 8.dp),
                                     onClick = {},
